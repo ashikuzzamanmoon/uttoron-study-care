@@ -1,4 +1,4 @@
-# 🎓 Uttoron Study Care (উত্তরণ স্টাডি কেয়ার)
+# 🎓 Uttoron Study Care
 
 > **All-in-One Coaching Management System & Smart SMS Campaign Engine**  
 > A high-performance, full-stack coaching center management platform designed to streamline student admissions, faculty records, batch routine scheduling, attendance tracking, exams & merit processing, fee collection, accounting, and multi-channel SMS marketing campaigns.

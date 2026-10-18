@@ -1847,7 +1847,7 @@ backend/src/modules/attendance/ তৈরি করো:
 ### PHASE 4: ACCOUNTS & FINANCE
 ### ============================================
 
-#### ⬜ STEP 23: Accounts Module (Backend)
+#### ✅ STEP 23: Accounts Module (Backend)
 ```
 হিসাব-নিকাশ মডিউল (ব্যাকএন্ড):
 

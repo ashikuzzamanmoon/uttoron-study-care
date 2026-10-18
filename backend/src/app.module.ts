@@ -10,6 +10,7 @@ import { BatchesModule } from './modules/batches/batches.module.js';
 import { RoutineModule } from './modules/routine/routine.module.js';
 import { AttendanceModule } from './modules/attendance/attendance.module.js';
 import { ExamsModule } from './modules/exams/exams.module.js';
+import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -29,6 +30,7 @@ import { AppService } from './app.service.js';
     RoutineModule,
     AttendanceModule,
     ExamsModule,
+    AccountsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
