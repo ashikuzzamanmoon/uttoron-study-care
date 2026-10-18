@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: uttoron_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: uttoron_user
+      POSTGRES_PASSWORD: uttoron_secret_password_2026
+      POSTGRES_DB: uttoron_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uttoron_user -d uttoron_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uttoron_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: "postgresql://uttoron_user:uttoron_secret_password_2026@postgres:5432/uttoron_db?schema=public"
+      JWT_SECRET: "uttoron-super-secret-jwt-key-2026-secure"
+      JWT_EXPIRES_IN: "1d"
+      JWT_REFRESH_SECRET: "uttoron-super-refresh-jwt-key-2026-secure"
+      JWT_REFRESH_EXPIRES_IN: "7d"
+      PORT: 5000
+      NODE_ENV: production
+      FRONTEND_URL: "http://localhost:3000"
+      SMS_GATEWAY_URL: "http://api.greenweb.com.bd/api.php"
+      SMS_GATEWAY_API_KEY: ""
+      SMS_SENDER_ID: "UTTORON"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: uttoron_frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:5000/api/v1"
+      NEXT_PUBLIC_APP_NAME: "উত্তরণ স্টাডি কেয়ার"
+      NODE_ENV: production
+
+volumes:
+  postgres_data:
+    driver: local
