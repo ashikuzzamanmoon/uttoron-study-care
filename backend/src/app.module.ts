@@ -14,6 +14,7 @@ import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { SmsModule } from './modules/sms/sms.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
+import { NoticesModule } from './modules/notices/notices.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -37,6 +38,7 @@ import { AppService } from './app.service.js';
     SmsModule,
     DashboardModule,
     ReportsModule,
+    NoticesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

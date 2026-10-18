@@ -2046,7 +2046,7 @@ Frontend — /reports:
 - Excel এক্সপোর্ট অপশন
 ```
 
-#### ⬜ STEP 29: Notices Module
+#### ✅ STEP 29: Notices Module
 ```
 নোটিশ বোর্ড:
 
@@ -2156,7 +2156,7 @@ Frontend — /settings:
 | **Phase 3: Attendance & Exam** | Steps 19-22 | ✅ |
 | **Phase 4: Accounts** | Steps 23-24 | ✅ |
 | **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
-| **Phase 6: Dashboard & Reports** | Steps 27-30 | 🔄 (Step 27, 28 Done) |
+| **Phase 6: Dashboard & Reports** | Steps 27-30 | 🔄 (Step 27, 28, 29 Done) |
 | **Phase 7: Polish** | Steps 31-35 | ⬜ |
 
 ---
