@@ -13,6 +13,7 @@ import { ExamsModule } from './modules/exams/exams.module.js';
 import { AccountsModule } from './modules/accounts/accounts.module.js';
 import { SmsModule } from './modules/sms/sms.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -35,6 +36,7 @@ import { AppService } from './app.service.js';
     AccountsModule,
     SmsModule,
     DashboardModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
