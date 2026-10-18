@@ -2060,7 +2060,7 @@ Frontend — /notices:
 3. সম্পাদনা ও মুছে ফেলা
 ```
 
-#### ⬜ STEP 30: Settings Module
+#### ✅ STEP 30: Settings Module
 ```
 সেটিংস পেজ:
 
@@ -2156,7 +2156,7 @@ Frontend — /settings:
 | **Phase 3: Attendance & Exam** | Steps 19-22 | ✅ |
 | **Phase 4: Accounts** | Steps 23-24 | ✅ |
 | **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
-| **Phase 6: Dashboard & Reports** | Steps 27-30 | 🔄 (Step 27, 28, 29 Done) |
+| **Phase 6: Dashboard & Reports** | Steps 27-30 | ✅ |
 | **Phase 7: Polish** | Steps 31-35 | ⬜ |
 
 ---
