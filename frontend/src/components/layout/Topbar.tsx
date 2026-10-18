@@ -13,7 +13,10 @@ import {
   FiLogOut,
   FiChevronDown,
   FiCheckCircle,
+  FiSun,
+  FiMoon,
 } from 'react-icons/fi';
+import { useTheme } from '../../context/ThemeContext';
 import { Badge } from '../ui/Badge';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
@@ -29,6 +32,7 @@ interface TopbarProps {
 
 export function Topbar({ onToggleSidebar }: TopbarProps) {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -161,6 +165,21 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
             শিক্ষাবর্ষ ২০২৬
           </Badge>
         </div>
+
+        {/* Dark Mode Toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-hidden"
+          title={isDark ? 'লাইট মোডে পরিবর্তন করুন' : 'ডার্ক মোডে পরিবর্তন করুন'}
+          aria-label="Toggle Theme"
+        >
+          {isDark ? (
+            <FiSun className="w-5 h-5 text-amber-400 hover:rotate-45 transition-transform" />
+          ) : (
+            <FiMoon className="w-5 h-5 text-slate-600 hover:text-indigo-600 transition-colors" />
+          )}
+        </button>
 
         {/* Notification Bell */}
         <div className="relative" ref={notifRef}>

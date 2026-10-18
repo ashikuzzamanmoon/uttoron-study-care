@@ -22,6 +22,7 @@ import {
   FiChevronRight,
   FiBookOpen,
   FiPrinter,
+  FiX,
 } from 'react-icons/fi';
 
 interface SidebarProps {
@@ -192,6 +193,7 @@ export function Sidebar({
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-800/80 bg-slate-950/40">
           <Link
             href="/dashboard"
+            onClick={onCloseMobile}
             className="flex items-center gap-3 overflow-hidden"
           >
             <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-indigo-500 to-indigo-700 flex items-center justify-center text-white shrink-0 shadow-md shadow-indigo-600/30">
@@ -208,6 +210,16 @@ export function Sidebar({
               </div>
             )}
           </Link>
+
+          {/* Mobile close button */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 lg:hidden focus:outline-hidden"
+            title="মেনু বন্ধ করুন"
+          >
+            <FiX className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Menu */}

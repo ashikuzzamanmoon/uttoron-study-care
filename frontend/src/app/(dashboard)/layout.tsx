@@ -27,7 +27,7 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <PageLoader text="ড্যাশবোর্ড প্রস্তুত করা হচ্ছে..." />
       </div>
     );
@@ -38,7 +38,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex transition-colors">
       {/* Sidebar */}
       <Sidebar
         isCollapsed={isSidebarCollapsed}

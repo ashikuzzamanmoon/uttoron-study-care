@@ -2118,7 +2118,7 @@ Frontend — /settings:
 5. রেজাল্ট শিট — Export to Excel
 ```
 
-#### ⬜ STEP 34: Dark Mode & Responsive Design
+#### ✅ STEP 34: Dark Mode & Responsive Design
 ```
 ডার্ক মোড ও রেসপন্সিভ ডিজাইন:
 
@@ -2157,7 +2157,7 @@ Frontend — /settings:
 | **Phase 4: Accounts** | Steps 23-24 | ✅ |
 | **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
 | **Phase 6: Dashboard & Reports** | Steps 27-30 | ✅ |
-| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31, 32, 33 Done) |
+| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31, 32, 33, 34 Done) |
 
 ---
 
