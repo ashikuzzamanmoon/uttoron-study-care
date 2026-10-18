@@ -16,6 +16,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { NoticesModule } from './modules/notices/notices.module.js';
 import { SettingsModule } from './modules/settings/settings.module.js';
+import { SearchModule } from './modules/search/search.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
@@ -41,6 +42,7 @@ import { AppService } from './app.service.js';
     ReportsModule,
     NoticesModule,
     SettingsModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

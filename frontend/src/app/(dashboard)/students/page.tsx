@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { Student, PaginationMeta } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
-import { Card, CardBody, CardHeader } from '../../../components/ui/Card';
+import { Card, CardBody } from '../../../components/ui/Card';
 import {
   Table,
   TableHeader,
@@ -19,34 +19,73 @@ import {
 } from '../../../components/ui/Table';
 import { Pagination } from '../../../components/ui/Pagination';
 import { Spinner } from '../../../components/ui/Loader';
+import { AdvancedFilterPanel } from '../../../components/ui/AdvancedFilterPanel';
+import { useDebounce } from '../../../hooks/useDebounce';
 import {
   FiUserPlus,
   FiSearch,
   FiDownload,
   FiEye,
-  FiFilter,
   FiPhone,
+  FiX,
   FiRefreshCw,
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
-export default function StudentsListPage() {
+function StudentsListContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Read initial filter values from URL
+  const initialSearch = searchParams.get('search') || '';
+  const initialClass = searchParams.get('classLevel') || '';
+  const initialGroup = searchParams.get('group') || '';
+  const initialStatus = searchParams.get('status') || '';
+  const initialPage = parseInt(searchParams.get('page') || '1', 10);
+
   const [students, setStudents] = useState<Student[]>([]);
   const [meta, setMeta] = useState<PaginationMeta>({
-    page: 1,
+    page: initialPage,
     limit: 10,
     total: 0,
     totalPages: 1,
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [classLevel, setClassLevel] = useState('');
-  const [group, setGroup] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  // Filter states
+  const [search, setSearch] = useState(initialSearch);
+  const [classLevel, setClassLevel] = useState(initialClass);
+  const [group, setGroup] = useState(initialGroup);
+  const [statusFilter, setStatusFilter] = useState(initialStatus);
+
+  // Debounced search term
+  const debouncedSearch = useDebounce(search, 300);
+
+  // Active filter count
+  const activeFilterCount = [
+    debouncedSearch.trim() ? 1 : 0,
+    classLevel ? 1 : 0,
+    group ? 1 : 0,
+    statusFilter ? 1 : 0,
+  ].reduce((a, b) => a + b, 0);
+
+  // Sync state with URL search parameters
+  const updateUrlParams = useCallback(
+    (page: number, q: string, cl: string, grp: string, st: string) => {
+      const params = new URLSearchParams();
+      if (page > 1) params.set('page', page.toString());
+      if (q.trim()) params.set('search', q.trim());
+      if (cl) params.set('classLevel', cl);
+      if (grp) params.set('group', grp);
+      if (st) params.set('status', st);
+
+      const queryString = params.toString();
+      const targetUrl = queryString ? `/students?${queryString}` : '/students';
+      router.replace(targetUrl);
+    },
+    [router],
+  );
 
   const fetchStudents = useCallback(
     async (page = 1) => {
@@ -57,7 +96,7 @@ export default function StudentsListPage() {
           limit: 10,
         };
 
-        if (search.trim()) params.search = search.trim();
+        if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
         if (classLevel) params.classLevel = classLevel;
         if (group) params.group = group;
         if (statusFilter) params.isActive = statusFilter === 'active';
@@ -69,21 +108,29 @@ export default function StudentsListPage() {
         if (res.data?.meta) {
           setMeta(res.data.meta);
         }
+
+        updateUrlParams(page, debouncedSearch, classLevel, group, statusFilter);
       } catch (err: any) {
         toast.error('শিক্ষার্থীদের তথ্য লোড করতে সমস্যা হয়েছে');
       } finally {
         setIsLoading(false);
       }
     },
-    [search, classLevel, group, statusFilter],
+    [debouncedSearch, classLevel, group, statusFilter, updateUrlParams],
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchStudents(1);
-    }, 300);
-    return () => clearTimeout(timer);
+    fetchStudents(1);
   }, [fetchStudents]);
+
+  // Clear all filters
+  const handleClearAllFilters = () => {
+    setSearch('');
+    setClassLevel('');
+    setGroup('');
+    setStatusFilter('');
+    router.replace('/students');
+  };
 
   const handleExportExcel = () => {
     if (students.length === 0) {
@@ -92,35 +139,35 @@ export default function StudentsListPage() {
     }
 
     const exportData = students.map((s, idx) => ({
-      ক্রমিক: idx + 1,
+      'ক্রমিক': idx + 1,
       'স্টুডেন্ট আইডি': s.studentId,
       'নাম (ইংরেজি)': s.nameEn,
       'নাম (বাংলা)': s.nameBn || '-',
-      শ্রেণি: s.classLevel,
-      বিভাগ: s.group || 'সাধারণ',
+      'শ্রেণি': s.classLevel,
+      'বিভাগ': s.group || 'সাধারণ',
+      'অভিভাবকের নাম': s.guardianName || s.fatherName,
       'অভিভাবকের ফোন': s.guardianPhone,
-      'পিতার নাম': s.fatherName,
-      'মাসিক ফি': s.monthlyFee || 0,
-      স্ট্যাটাস: s.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়',
+      'রক্তের গ্রুপ': s.bloodGroup || '-',
+      'স্ট্যাটাস': s.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়',
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
-    XLSX.writeFile(workbook, `uttoron_students_${new Date().toISOString().slice(0, 10)}.xlsx`);
-    toast.success('এক্সেল ফাইল ডাউনলোড শুরু হয়েছে');
+    XLSX.writeFile(workbook, `Uttoron_Students_${Date.now()}.xlsx`);
+    toast.success('এক্সেল ফাইল ডাউনলোড সম্পন্ন হয়েছে');
   };
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            শিক্ষার্থী তালিকা
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            শিক্ষার্থী তালিকা (Students Directory)
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            কোচিংয়ে ভর্তিকৃত সকল শিক্ষার্থীর প্রোফাইল, শ্রেণি, ব্যাচ ও তথ্য
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            কোচিংয়ে ভর্তিকৃত সকল শিক্ষার্থীর প্রোফাইল, শ্রেণি, ব্যাচ ও যোগাযোগের তথ্য
           </p>
         </div>
 
@@ -129,233 +176,252 @@ export default function StudentsListPage() {
             variant="secondary"
             size="md"
             onClick={handleExportExcel}
-            leftIcon={<FiDownload />}
+            className="flex items-center gap-1.5"
           >
+            <FiDownload className="w-4 h-4 text-emerald-600" />
             এক্সপোর্ট এক্সেল
           </Button>
 
-          <Link href="/dashboard/students/add">
-            <Button variant="primary" size="md" leftIcon={<FiUserPlus />}>
+          <Link href="/students/add">
+            <Button variant="primary" size="md" className="flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+              <FiUserPlus className="w-4 h-4" />
               নতুন ভর্তি
             </Button>
           </Link>
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <Card>
-        <CardBody className="p-4 sm:p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-            {/* Search */}
-            <div className="relative lg:col-span-2">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <FiSearch className="w-4 h-4" />
-              </div>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="নাম, আইডি বা ফোন দিয়ে খুঁজুন..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-slate-900 placeholder:text-slate-400"
-              />
+      {/* Advanced Filter Panel (Collapsible with Active Filter Count) */}
+      <AdvancedFilterPanel
+        title="উন্নত সার্চ ও ফিল্টার প্যানেল"
+        activeCount={activeFilterCount}
+        onClearAll={handleClearAllFilters}
+        defaultOpen={true}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Debounced Search */}
+          <div className="relative lg:col-span-2">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <FiSearch className="w-4 h-4" />
             </div>
-
-            {/* Class Filter */}
-            <div>
-              <select
-                value={classLevel}
-                onChange={(e) => setClassLevel(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="নাম, স্টুডেন্ট আইডি বা মোবাইল নম্বর লিখুন..."
+              className="w-full pl-10 pr-8 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all text-slate-900 placeholder:text-slate-400"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
               >
-                <option value="">সকল শ্রেণি</option>
-                <option value="Class 8">৮ম শ্রেণি (Class 8)</option>
-                <option value="Class 9">৯ম শ্রেণি (Class 9)</option>
-                <option value="Class 10">১০ম শ্রেণি (Class 10)</option>
-                <option value="HSC 1st Year">একাদশ শ্রেণি (HSC 1st)</option>
-                <option value="HSC 2nd Year">দ্বাদশ শ্রেণি (HSC 2nd)</option>
-              </select>
-            </div>
-
-            {/* Group Filter */}
-            <div>
-              <select
-                value={group}
-                onChange={(e) => setGroup(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
-              >
-                <option value="">সকল বিভাগ</option>
-                <option value="Science">বিজ্ঞান (Science)</option>
-                <option value="Commerce">ব্যবসায় শিক্ষা (Commerce)</option>
-                <option value="Arts">মানবিক (Arts)</option>
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
-              >
-                <option value="">সকল স্ট্যাটাস</option>
-                <option value="active">সক্রিয় (Active)</option>
-                <option value="inactive">নিষ্ক্রিয় (Inactive)</option>
-              </select>
-
-              {(search || classLevel || group || statusFilter) && (
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setClassLevel('');
-                    setGroup('');
-                    setStatusFilter('');
-                  }}
-                  className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
-                  title="ফিল্টার রিসেট করুন"
-                >
-                  <FiRefreshCw className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+                <FiX className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
-        </CardBody>
-      </Card>
+
+          {/* Class Filter */}
+          <div>
+            <select
+              value={classLevel}
+              onChange={(e) => setClassLevel(e.target.value)}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
+            >
+              <option value="">সকল শ্রেণি</option>
+              <option value="Class 8">৮ম শ্রেণি (Class 8)</option>
+              <option value="Class 9">৯ম শ্রেণি (Class 9)</option>
+              <option value="Class 10">১০ম শ্রেণি (Class 10)</option>
+              <option value="HSC 1st Year">একাদশ শ্রেণি (HSC 1st)</option>
+              <option value="HSC 2nd Year">দ্বাদশ শ্রেণি (HSC 2nd)</option>
+            </select>
+          </div>
+
+          {/* Group Filter */}
+          <div>
+            <select
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
+            >
+              <option value="">সকল বিভাগ</option>
+              <option value="Science">বিজ্ঞান (Science)</option>
+              <option value="Commerce">ব্যবসায় শিক্ষা (Commerce)</option>
+              <option value="Arts">মানবিক (Arts)</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 text-slate-700"
+            >
+              <option value="">সকল স্ট্যাটাস</option>
+              <option value="active">সক্রিয় (Active)</option>
+              <option value="inactive">নিষ্ক্রিয় (Inactive)</option>
+            </select>
+          </div>
+        </div>
+      </AdvancedFilterPanel>
 
       {/* Students Data Table */}
-      <Card>
-        <div className="relative">
-          {isLoading && (
-            <div className="absolute inset-0 bg-white/70 backdrop-blur-2xs z-10 flex items-center justify-center">
-              <Spinner size="lg" />
-            </div>
-          )}
-
+      <Card className="border-slate-200 shadow-xs overflow-hidden">
+        <CardBody className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>শিক্ষার্থী</TableHead>
+              <TableRow className="bg-slate-50/80">
+                <TableHead className="w-16">ছবি</TableHead>
+                <TableHead>আইডি ও নাম</TableHead>
                 <TableHead>শ্রেণি ও বিভাগ</TableHead>
-                <TableHead>ব্যাচ</TableHead>
-                <TableHead>অভিভাবকের ফোন (SMS)</TableHead>
-                <TableHead>স্ট্যাটাস</TableHead>
+                <TableHead>অভিভাবক ও ফোন</TableHead>
+                <TableHead className="text-center">স্ট্যাটাস</TableHead>
                 <TableHead className="text-right">অ্যাকশন</TableHead>
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {students.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Spinner size="lg" className="text-indigo-600" />
+                      <span className="text-xs text-slate-500 font-medium animate-pulse">
+                        শিক্ষার্থীদের তথ্য লোড হচ্ছে...
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : students.length === 0 ? (
+                <TableEmpty
+                  colSpan={6}
+                  message="কোনো শিক্ষার্থী পাওয়া যায়নি"
+                  description="আপনার সার্চ বা ফিল্টারের সাথে মিলে এমন কোনো শিক্ষার্থী নেই।"
+                />
+              ) : (
                 students.map((student) => (
-                  <TableRow
-                    key={student.id}
-                    className="cursor-pointer"
-                    onClick={() => router.push(`/dashboard/students/${student.id}`)}
-                  >
-                    {/* Student Info */}
+                  <TableRow key={student.id} className="group">
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-linear-to-tr from-indigo-500 to-indigo-700 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
-                          {student.nameEn.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                            {student.nameEn}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span className="font-mono text-indigo-600 font-medium">
-                              {student.studentId}
-                            </span>
-                            {student.nameBn && <span>• {student.nameBn}</span>}
-                          </div>
-                        </div>
+                      <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center font-bold text-slate-600 text-xs shrink-0">
+                        {student.photo ? (
+                          <img
+                            src={student.photo}
+                            alt={student.nameEn}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          student.nameEn?.charAt(0).toUpperCase() || 'S'
+                        )}
                       </div>
                     </TableCell>
 
-                    {/* Class & Group */}
                     <TableCell>
                       <div>
-                        <p className="font-medium text-slate-800">{student.classLevel}</p>
-                        <p className="text-xs text-slate-500">{student.group || 'সাধারণ'}</p>
-                      </div>
-                    </TableCell>
-
-                    {/* Batches */}
-                    <TableCell>
-                      {student.batchStudents && student.batchStudents.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {student.batchStudents.map((bs, i) => (
-                            <Badge key={i} variant="primary" size="sm">
-                              {bs.batch?.name || 'অ্যাসাইনড'}
-                            </Badge>
-                          ))}
+                        <span className="font-bold text-slate-900 text-sm block group-hover:text-indigo-600 transition-colors">
+                          {student.nameBn || student.nameEn}
+                        </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="font-mono text-xs text-slate-500 font-medium">
+                            {student.studentId}
+                          </span>
+                          {student.nameBn && (
+                            <span className="text-[11px] text-slate-400">
+                              ({student.nameEn})
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">কোনো ব্যাচে নেই</span>
-                      )}
-                    </TableCell>
-
-                    {/* Contact */}
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-slate-700">
-                        <FiPhone className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="font-mono text-xs">{student.guardianPhone}</span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5">{student.fatherName}</p>
                     </TableCell>
 
-                    {/* Status */}
                     <TableCell>
-                      <Badge
-                        variant={student.isActive ? 'success' : 'danger'}
-                        dot
-                        size="sm"
-                      >
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-semibold text-slate-800 block">
+                          {student.classLevel}
+                        </span>
+                        <span className="text-[11px] text-slate-500">
+                          {student.group || 'সাধারণ'}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <span className="text-xs font-medium text-slate-800 block">
+                          {student.guardianName || student.fatherName || '-'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 flex items-center gap-1 font-mono">
+                          <FiPhone className="w-3 h-3 text-slate-400" />
+                          {student.guardianPhone}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-center">
+                      <Badge variant={student.isActive ? 'success' : 'danger'} size="sm">
                         {student.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
                       </Badge>
                     </TableCell>
 
-                    {/* Actions */}
                     <TableCell className="text-right">
-                      <Link
-                        href={`/dashboard/students/${student.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold transition-colors"
-                      >
-                        <FiEye className="w-3.5 h-3.5" />
-                        বিস্তারিত
+                      <Link href={`/students/${student.id}`}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="flex items-center gap-1 text-xs"
+                        >
+                          <FiEye className="w-3.5 h-3.5" />
+                          প্রোফাইল
+                        </Button>
                       </Link>
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
-                <TableEmpty
-                  colSpan={6}
-                  message="কোনো শিক্ষার্থী পাওয়া যায়নি"
-                  description="অনুসন্ধানের মান পরিবর্তন করুন অথবা নতুন শিক্ষার্থী ভর্তি করুন।"
-                  action={
-                    <Link href="/dashboard/students/add">
-                      <Button variant="primary" size="sm" leftIcon={<FiUserPlus />}>
-                        নতুন ভর্তি ফরম
-                      </Button>
-                    </Link>
-                  }
-                />
               )}
             </TableBody>
           </Table>
-        </div>
 
-        {/* Pagination */}
-        {meta.totalPages > 1 && (
-          <div className="p-4 border-t border-slate-100">
-            <Pagination
-              currentPage={meta.page}
-              totalPages={meta.totalPages}
-              totalItems={meta.total}
-              pageSize={meta.limit}
-              onPageChange={(page) => fetchStudents(page)}
-            />
-          </div>
-        )}
+          {/* Pagination */}
+          {meta.totalPages > 1 && (
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between">
+              <p className="text-xs text-slate-500">
+                মোট <span className="font-bold text-slate-700">{meta.total}</span> জনের মধ্যে{' '}
+                <span className="font-bold text-slate-700">
+                  {(meta.page - 1) * meta.limit + 1}
+                </span>{' '}
+                -{' '}
+                <span className="font-bold text-slate-700">
+                  {Math.min(meta.page * meta.limit, meta.total)}
+                </span>{' '}
+                প্রদর্শিত
+              </p>
+              <Pagination
+                currentPage={meta.page}
+                totalPages={meta.totalPages}
+                onPageChange={(page) => fetchStudents(page)}
+              />
+            </div>
+          )}
+        </CardBody>
       </Card>
     </div>
+  );
+}
+
+export default function StudentsListPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 flex flex-col items-center justify-center space-y-3">
+          <Spinner size="lg" className="text-indigo-600" />
+          <p className="text-xs font-semibold text-slate-500 animate-pulse">
+            শিক্ষার্থী তালিকা প্রস্তুত হচ্ছে...
+          </p>
+        </div>
+      }
+    >
+      <StudentsListContent />
+    </Suspense>
   );
 }

@@ -20,6 +20,7 @@ import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { api } from '../../lib/api';
 import toast from 'react-hot-toast';
+import { GlobalSearchModal } from '../search/GlobalSearchModal';
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -31,6 +32,7 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Change password form state
   const [currentPassword, setCurrentPassword] = useState('');
@@ -40,6 +42,18 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  // Ctrl+K or Cmd+K Global Shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -126,22 +140,25 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
 
       {/* Right: Search, Notifications & User Dropdown */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Search Input */}
-        <div className="relative hidden md:block w-64 lg:w-72">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-            <FiSearch className="w-4 h-4" />
+        {/* Global Search Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(true)}
+          className="relative flex items-center justify-between w-48 sm:w-64 lg:w-72 px-3 py-1.5 text-xs bg-slate-100/80 hover:bg-slate-200/70 border border-slate-200/60 rounded-xl text-slate-500 hover:text-slate-800 transition-all text-left group"
+        >
+          <div className="flex items-center gap-2 truncate">
+            <FiSearch className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+            <span className="truncate">খুঁজুন (Search)...</span>
           </div>
-          <input
-            type="text"
-            placeholder="ছাত্র, ব্যাচ বা মোবাইল খুঁজুন..."
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-100/80 border border-transparent hover:border-slate-300 focus:border-indigo-600 focus:bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-slate-900 placeholder:text-slate-400"
-          />
-        </div>
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white border border-slate-200 text-slate-500 rounded-md shadow-2xs">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </button>
 
         {/* Academic Year Badge */}
         <div className="hidden lg:block">
           <Badge variant="primary" size="sm">
-            শিক্ষাবর্ষ ২০২৫
+            শিক্ষাবর্ষ ২০২৬
           </Badge>
         </div>
 
@@ -330,6 +347,12 @@ export function Topbar({ onToggleSidebar }: TopbarProps) {
           </div>
         </form>
       </Modal>
+
+      {/* Global Search Spotlight Command Palette Modal */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </header>
   );
 }
