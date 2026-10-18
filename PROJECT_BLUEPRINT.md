@@ -1952,7 +1952,7 @@ backend/src/modules/attendance/ তৈরি করো:
 7. Module: sms.module.ts
 ```
 
-#### ⬜ STEP 26: SMS Module (Frontend)
+#### ✅ STEP 26: SMS Module (Frontend)
 ```
 এসএমএস ম্যানেজমেন্ট ফ্রন্টএন্ড:
 
