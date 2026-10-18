@@ -1,0 +1,634 @@
+// ============================================
+// Uttoron Study Care - Database Schema
+// Coaching Management System
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========================
+// USER & AUTHENTICATION
+// ========================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+  STAFF
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String     @id @default(uuid())
+  username     String     @unique
+  email        String?    @unique
+  password     String     // bcrypt hashed
+  role         UserRole   @default(STAFF)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+  refreshToken String?
+
+  // Relations
+  teacher        Teacher?
+  student        Student?
+  createdNotices Notice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// ========================
+// STUDENT
+// ========================
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+}
+
+model Student {
+  id        String  @id @default(uuid())
+  studentId String  @unique // Auto-generated: USC-YYYY-NNNN
+  userId    String? @unique
+  user      User?   @relation(fields: [userId], references: [id])
+
+  // Personal Info
+  nameEn      String // Name in English
+  nameBn      String? // Name in Bangla
+  gender      Gender
+  dateOfBirth DateTime?
+  bloodGroup  BloodGroup?
+  photo       String? // Photo URL/path
+  phone       String?
+  email       String?
+
+  // Academic Info
+  instituteName String? // School/College name
+  classLevel    String // e.g., "Class 9", "Class 10", "HSC 1st Year"
+  group         String? // Science, Commerce, Arts
+  boardRollNo   String?
+
+  // Guardian Info
+  fatherName       String
+  fatherPhone      String?
+  motherName       String?
+  motherPhone      String?
+  guardianName     String? // If different from parents
+  guardianPhone    String // Primary contact for SMS
+  guardianRelation String?
+
+  // Address
+  presentAddress   String?
+  permanentAddress String?
+
+  // Admission
+  admissionDate DateTime @default(now())
+  admissionFee  Float?   @default(0)
+  monthlyFee    Float?   @default(0)
+  discount      Float?   @default(0)
+  discountType  String?  @default("PERCENTAGE") // PERCENTAGE or FIXED
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Relations
+  batchStudents  BatchStudent[]
+  attendances    Attendance[]
+  marks          Mark[]
+  feeCollections FeeCollection[]
+  smsRecipients  SmsRecipient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("students")
+}
+
+// ========================
+// TEACHER
+// ========================
+
+model Teacher {
+  id        String  @id @default(uuid())
+  teacherId String  @unique // Auto-generated: TCH-001
+  userId    String? @unique
+  user      User?   @relation(fields: [userId], references: [id])
+
+  // Personal Info
+  nameEn      String
+  nameBn      String?
+  gender      Gender
+  dateOfBirth DateTime?
+  photo       String?
+  phone       String
+  email       String?
+  nidNumber   String? // National ID
+
+  // Professional Info
+  designation    String? // Senior Teacher, Junior Teacher, etc.
+  qualification  String? // M.Sc, B.Sc, etc.
+  specialization String? // Subject expertise
+  joiningDate    DateTime @default(now())
+  monthlySalary  Float?   @default(0)
+
+  // Address
+  address String?
+
+  // Status
+  isActive Boolean @default(true)
+
+  // Relations
+  teacherSubjects  TeacherSubject[]
+  batchTeachers    BatchTeacher[]
+  routineSlots     RoutineSlot[]
+  attendancesTaken Attendance[]     @relation("AttendanceTakenBy")
+  examsCreated     Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("teachers")
+}
+
+// ========================
+// SUBJECT
+// ========================
+
+model Subject {
+  id         String   @id @default(uuid())
+  name       String // e.g., "পদার্থবিজ্ঞান", "Physics"
+  code       String   @unique // e.g., "PHY", "MATH"
+  classLevel String? // Associated class level
+  group      String? // Science, Commerce, Arts, or null (common)
+  fullMarks  Int      @default(100)
+  passMarks  Int      @default(33)
+  isActive   Boolean  @default(true)
+
+  // Relations
+  teacherSubjects TeacherSubject[]
+  batchSubjects   BatchSubject[]
+  routineSlots    RoutineSlot[]
+  exams           Exam[]
+  marks           Mark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subjects")
+}
+
+model TeacherSubject {
+  id        String  @id @default(uuid())
+  teacherId String
+  subjectId String
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@map("teacher_subjects")
+}
+
+// ========================
+// BATCH (CLASS GROUP)
+// ========================
+
+model Batch {
+  id          String    @id @default(uuid())
+  name        String // e.g., "Class 10 - Batch A (Science)"
+  classLevel  String // e.g., "Class 10"
+  group       String? // Science, Commerce, Arts
+  section     String? // A, B, C
+  year        Int // Academic year: 2024, 2025
+  maxStudents Int?      @default(40)
+  monthlyFee  Float?    @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean   @default(true)
+
+  // Relations
+  batchStudents BatchStudent[]
+  batchTeachers BatchTeacher[]
+  batchSubjects BatchSubject[]
+  routineSlots  RoutineSlot[]
+  attendances   Attendance[]
+  exams         Exam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("batches")
+}
+
+model BatchStudent {
+  id         String    @id @default(uuid())
+  batchId    String
+  studentId  String
+  rollNumber Int? // Roll within this batch
+  joinedAt   DateTime  @default(now())
+  leftAt     DateTime?
+  isActive   Boolean   @default(true)
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, studentId])
+  @@map("batch_students")
+}
+
+model BatchTeacher {
+  id        String  @id @default(uuid())
+  batchId   String
+  teacherId String
+  isPrimary Boolean @default(false) // Primary/Class teacher
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, teacherId])
+  @@map("batch_teachers")
+}
+
+model BatchSubject {
+  id        String @id @default(uuid())
+  batchId   String
+  subjectId String
+
+  batch   Batch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, subjectId])
+  @@map("batch_subjects")
+}
+
+// ========================
+// ROUTINE (WEEKLY TIMETABLE)
+// ========================
+
+enum DayOfWeek {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+model RoutineSlot {
+  id        String    @id @default(uuid())
+  batchId   String
+  subjectId String?
+  teacherId String?
+  day       DayOfWeek
+  startTime String // "09:00" (24hr format)
+  endTime   String // "10:00"
+  roomNo    String?
+
+  batch   Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+
+  @@map("routine_slots")
+}
+
+// ========================
+// ATTENDANCE
+// ========================
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  batchId   String
+  studentId String
+  date      DateTime         @db.Date
+  status    AttendanceStatus @default(PRESENT)
+  remarks   String?
+  takenById String? // Teacher who took attendance
+
+  batch   Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  takenBy Teacher? @relation("AttendanceTakenBy", fields: [takenById], references: [id])
+
+  // Auto SMS sent when absent?
+  smsSent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([batchId, studentId, date])
+  @@map("attendances")
+}
+
+// ========================
+// EXAM & MARKS
+// ========================
+
+enum ExamType {
+  CLASS_TEST
+  WEEKLY_TEST
+  MONTHLY_EXAM
+  QUARTERLY_EXAM
+  HALF_YEARLY
+  YEARLY_FINAL
+  MODEL_TEST
+  BOARD_MODEL
+}
+
+model Exam {
+  id        String   @id @default(uuid())
+  name      String // "January Monthly Exam 2024"
+  examType  ExamType
+  batchId   String
+  subjectId String
+  teacherId String? // Exam creator/conductor
+
+  examDate    DateTime @db.Date
+  fullMarks   Int      @default(100)
+  passMarks   Int      @default(33)
+  duration    Int? // In minutes
+  syllabus    String? // Exam syllabus description
+  isPublished Boolean  @default(false) // Results published?
+
+  batch   Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  subject Subject  @relation(fields: [subjectId], references: [id])
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  marks   Mark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("exams")
+}
+
+model Mark {
+  id            String  @id @default(uuid())
+  examId        String
+  studentId     String
+  subjectId     String
+  obtainedMarks Float
+  grade         String? // Auto-calculated: A+, A, B, etc.
+  remarks       String?
+
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([examId, studentId, subjectId])
+  @@map("marks")
+}
+
+// ========================
+// ACCOUNTS & FINANCE
+// ========================
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  ROCKET
+  BANK_TRANSFER
+  OTHER
+}
+
+enum FeeType {
+  ADMISSION_FEE
+  MONTHLY_FEE
+  EXAM_FEE
+  LAB_FEE
+  BOOK_FEE
+  FINE
+  OTHER
+}
+
+model FeeCollection {
+  id             String        @id @default(uuid())
+  studentId      String
+  receiptNo      String        @unique // Auto-generated: RCP-YYYY-NNNN
+  feeType        FeeType       @default(MONTHLY_FEE)
+  feeMonth       String? // "January 2024", "February 2024"
+  amount         Float
+  discount       Float?        @default(0)
+  fine           Float?        @default(0)
+  paidAmount     Float
+  dueAmount      Float         @default(0)
+  paymentMethod  PaymentMethod @default(CASH)
+  transactionId  String? // bKash/Nagad transaction ID
+  paymentDate    DateTime      @default(now())
+  remarks        String?
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // SMS receipt sent?
+  receiptSmsSent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("fee_collections")
+}
+
+enum ExpenseCategory {
+  SALARY
+  RENT
+  ELECTRICITY
+  INTERNET
+  STATIONERY
+  FURNITURE
+  MARKETING
+  SMS_RECHARGE
+  MAINTENANCE
+  OTHER
+}
+
+model Expense {
+  id            String          @id @default(uuid())
+  voucherNo     String          @unique // Auto-generated: EXP-YYYY-NNNN
+  category      ExpenseCategory
+  description   String
+  amount        Float
+  paidTo        String? // Person/entity paid to
+  paymentMethod PaymentMethod   @default(CASH)
+  expenseDate   DateTime        @default(now())
+  remarks       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("expenses")
+}
+
+// ========================
+// SMS ENGINE
+// ========================
+
+enum SmsType {
+  TRANSACTIONAL // Auto SMS (attendance, result, fee)
+  CAMPAIGN // Bulk marketing SMS
+  INDIVIDUAL // Single SMS to a student/guardian
+}
+
+enum SmsStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+model SmsTemplate {
+  id       String  @id @default(uuid())
+  name     String // "Attendance Alert", "Fee Reminder"
+  body     String // Template with placeholders: "Dear {{guardianName}}, {{studentName}} was absent on {{date}}"
+  type     SmsType @default(TRANSACTIONAL)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sms_templates")
+}
+
+model SmsCampaign {
+  id              String    @id @default(uuid())
+  name            String // "Free Physics Class - Nov 2024"
+  message         String
+  totalRecipients Int       @default(0)
+  sentCount       Int       @default(0)
+  failedCount     Int       @default(0)
+  scheduledAt     DateTime? // If scheduled for later
+  sentAt          DateTime?
+  status          String    @default("DRAFT") // DRAFT, SENDING, COMPLETED, FAILED
+
+  recipients SmsRecipient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sms_campaigns")
+}
+
+model SmsRecipient {
+  id              String    @id @default(uuid())
+  campaignId      String?
+  studentId       String?
+  phone           String
+  name            String?
+  message         String
+  status          SmsStatus @default(PENDING)
+  gatewayResponse String? // Response from SMS gateway
+  sentAt          DateTime?
+
+  campaign SmsCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  student  Student?     @relation(fields: [studentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sms_recipients")
+}
+
+model SmsLog {
+  id              String    @id @default(uuid())
+  phone           String
+  message         String
+  type            SmsType
+  status          SmsStatus @default(PENDING)
+  gatewayResponse String?
+  cost            Float? // Cost per SMS if tracked
+  sentAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("sms_logs")
+}
+
+// ========================
+// NOTICE BOARD
+// ========================
+
+model Notice {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  priority    String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  isPublished Boolean   @default(true)
+  publishedAt DateTime  @default(now())
+  expiresAt   DateTime?
+  createdById String
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notices")
+}
+
+// ========================
+// SETTINGS
+// ========================
+
+model Setting {
+  id          String  @id @default(uuid())
+  key         String  @unique // e.g., "institute_name", "sms_gateway_key"
+  value       String
+  group       String? // "institute", "sms", "academic", "system"
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+// ========================
+// ACADEMIC YEAR
+// ========================
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  name      String // "2024", "2025"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("academic_years")
+}
