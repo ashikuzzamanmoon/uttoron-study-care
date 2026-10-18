@@ -22,6 +22,7 @@ import { StudentsService } from './students.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { QueryStudentDto } from './dto/query-student.dto.js';
+import { BulkImportStudentDto } from './dto/bulk-import-student.dto.js';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../../common/guards/roles.guard.js';
 import { Roles } from '../../common/decorators/roles.decorator.js';
@@ -40,6 +41,14 @@ export class StudentsController {
   @ApiResponse({ status: 201, description: 'Student created successfully' })
   async create(@Body() createStudentDto: CreateStudentDto) {
     return this.studentsService.create(createStudentDto);
+  }
+
+  @Post('bulk-import')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF)
+  @ApiOperation({ summary: 'Bulk import students from Excel' })
+  @ApiResponse({ status: 201, description: 'Students imported successfully' })
+  async bulkImport(@Body() bulkDto: BulkImportStudentDto) {
+    return this.studentsService.bulkImport(bulkDto);
   }
 
   @Get()

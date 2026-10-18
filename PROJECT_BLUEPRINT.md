@@ -2107,7 +2107,7 @@ Frontend — /settings:
 6. @media print CSS styles
 ```
 
-#### ⬜ STEP 33: Data Import/Export
+#### ✅ STEP 33: Data Import/Export
 ```
 এক্সেল ইম্পোর্ট/এক্সপোর্ট:
 
@@ -2157,7 +2157,7 @@ Frontend — /settings:
 | **Phase 4: Accounts** | Steps 23-24 | ✅ |
 | **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
 | **Phase 6: Dashboard & Reports** | Steps 27-30 | ✅ |
-| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31, 32 Done) |
+| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31, 32, 33 Done) |
 
 ---
 

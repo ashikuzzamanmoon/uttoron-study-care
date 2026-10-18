@@ -7,6 +7,8 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateStudentDto } from './dto/create-student.dto.js';
 import { UpdateStudentDto } from './dto/update-student.dto.js';
 import { QueryStudentDto } from './dto/query-student.dto.js';
+import { BulkImportStudentDto } from './dto/bulk-import-student.dto.js';
+import { Gender } from '@prisma/client';
 
 @Injectable()
 export class StudentsService {
@@ -388,4 +390,104 @@ export class StudentsService {
       },
     };
   }
+
+  async bulkImport(dto: BulkImportStudentDto) {
+    const { students, defaultBatchId } = dto;
+    if (!students || students.length === 0) {
+      throw new BadRequestException('কোনো শিক্ষার্থীর তথ্য পাওয়া যায়নি');
+    }
+
+    const year = new Date().getFullYear();
+    const prefix = `USC-${year}-`;
+
+    const lastStudent = await this.prisma.student.findFirst({
+      where: {
+        studentId: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        studentId: 'desc',
+      },
+      select: {
+        studentId: true,
+      },
+    });
+
+    let currentNumber = 1;
+    if (lastStudent) {
+      const parts = lastStudent.studentId.split('-');
+      if (parts.length === 3) {
+        const lastNumber = parseInt(parts[2], 10);
+        if (!isNaN(lastNumber)) {
+          currentNumber = lastNumber + 1;
+        }
+      }
+    }
+
+    const importedStudents: any[] = [];
+    const errors: string[] = [];
+
+    for (let i = 0; i < students.length; i++) {
+      const item = students[i];
+      try {
+        const studentId = `${prefix}${String(currentNumber).padStart(4, '0')}`;
+        currentNumber++;
+
+        const targetBatchId = item.batchId || defaultBatchId;
+
+        const newStudent = await this.prisma.$transaction(async (tx) => {
+          const created = await tx.student.create({
+            data: {
+              studentId,
+              nameEn: item.nameEn.trim(),
+              nameBn: item.nameBn?.trim() || null,
+              gender: item.gender || Gender.MALE,
+              classLevel: item.classLevel?.trim() || 'Class 10',
+              group: item.group?.trim() || null,
+              fatherName: item.fatherName?.trim() || `${item.nameEn.trim()}'s Father`,
+              fatherPhone: item.fatherPhone?.trim() || null,
+              motherName: item.motherName?.trim() || null,
+              guardianName: item.fatherName?.trim() || `${item.nameEn.trim()}'s Guardian`,
+              guardianPhone: item.guardianPhone.trim(),
+              phone: item.phone?.trim() || null,
+              presentAddress: item.presentAddress?.trim() || null,
+              monthlyFee: item.monthlyFee ? Number(item.monthlyFee) : 0,
+              admissionFee: item.admissionFee ? Number(item.admissionFee) : 0,
+              admissionDate: new Date(),
+            },
+          });
+
+          if (targetBatchId) {
+            const batch = await tx.batch.findUnique({ where: { id: targetBatchId } });
+            if (batch) {
+              await tx.batchStudent.create({
+                data: {
+                  batchId: targetBatchId,
+                  studentId: created.id,
+                  rollNumber: item.rollNumber ? Number(item.rollNumber) : null,
+                },
+              });
+            }
+          }
+
+          return created;
+        });
+
+        importedStudents.push(newStudent);
+      } catch (err: any) {
+        errors.push(`রো #${i + 1} (${item.nameEn}): ${err.message || 'Error creating student'}`);
+      }
+    }
+
+    return {
+      message: `${importedStudents.length} জন শিক্ষার্থী সফলভাবে ডাটাবেজে ইম্পোর্ট করা হয়েছে`,
+      totalAttempted: students.length,
+      totalImported: importedStudents.length,
+      totalFailed: errors.length,
+      errors,
+      data: importedStudents,
+    };
+  }
 }
+

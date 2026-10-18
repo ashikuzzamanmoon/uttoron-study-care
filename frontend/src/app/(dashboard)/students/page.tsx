@@ -25,11 +25,16 @@ import {
   FiUserPlus,
   FiSearch,
   FiDownload,
+  FiUploadCloud,
   FiEye,
   FiPhone,
   FiX,
   FiRefreshCw,
+  FiCheckCircle,
+  FiAlertTriangle,
+  FiFileText,
 } from 'react-icons/fi';
+import { Modal } from '../../../components/ui/Modal';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 
@@ -132,6 +137,192 @@ function StudentsListContent() {
     router.replace('/students');
   };
 
+  // Import from Excel states
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [parsedRows, setParsedRows] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  // Fetch batches when import modal opens
+  useEffect(() => {
+    if (showImportModal && batches.length === 0) {
+      api
+        .get('/batches')
+        .then((res) => {
+          setBatches(res.data?.data || res.data || []);
+        })
+        .catch(() => {});
+    }
+  }, [showImportModal, batches.length]);
+
+  const handleDownloadSampleTemplate = () => {
+    const sampleRows = [
+      {
+        'Name (English) *': 'Tanvir Ahmed',
+        'Name (Bangla)': 'তানভীর আহমেদ',
+        'Gender (MALE/FEMALE) *': 'MALE',
+        'Class Level *': 'Class 10',
+        'Group': 'Science',
+        'Father Name *': 'Md. Rafiqul Islam',
+        'Guardian Phone *': '01812345678',
+        'Father Phone': '01812345678',
+        'Mother Name': 'Nasima Begum',
+        'Present Address': 'House 12, Road 4, Dhanmondi, Dhaka',
+        'Monthly Fee': 1200,
+        'Admission Fee': 500,
+        'Roll Number': 1,
+      },
+      {
+        'Name (English) *': 'Sadia Sultana',
+        'Name (Bangla)': 'সাদিয়া সুলতানা',
+        'Gender (MALE/FEMALE) *': 'FEMALE',
+        'Class Level *': 'Class 10',
+        'Group': 'Science',
+        'Father Name *': 'Anwar Hossain',
+        'Guardian Phone *': '01712345679',
+        'Father Phone': '01712345679',
+        'Mother Name': 'Shirin Akhter',
+        'Present Address': 'Mirpur-10, Dhaka',
+        'Monthly Fee': 1200,
+        'Admission Fee': 500,
+        'Roll Number': 2,
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students Template');
+    XLSX.writeFile(workbook, 'Uttoron_Student_Import_Template.xlsx');
+    toast.success('নমুনা এক্সেল টেমপ্লেট ডাউনলোড হয়েছে');
+  };
+
+  const handleExcelFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileError(null);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const rawJson: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+        if (!rawJson || rawJson.length === 0) {
+          setFileError('এক্সেল ফাইলে কোনো ডাটা পাওয়া যায়নি।');
+          return;
+        }
+
+        const validated = rawJson.map((row, idx) => {
+          const findVal = (keys: string[]) => {
+            for (const k of Object.keys(row)) {
+              const lower = k.toLowerCase().trim();
+              if (keys.some((cand) => lower.includes(cand))) {
+                return row[k];
+              }
+            }
+            return undefined;
+          };
+
+          const nameEn = String(findVal(['english', 'nameen', 'name en', 'name']) || '').trim();
+          const nameBn = String(findVal(['bangla', 'namebn', 'নাম']) || '').trim();
+          let gender = String(findVal(['gender', 'লিঙ্গ', 'sex']) || '').toUpperCase().trim();
+          if (gender.includes('FEMALE') || gender.includes('মহিলা') || gender.includes('মেয়ে') || gender.includes('মেয়ে')) {
+            gender = 'FEMALE';
+          } else {
+            gender = 'MALE';
+          }
+
+          const classLevel = String(findVal(['class', 'শ্রেণি', 'শ্রেণী', 'level']) || 'Class 10').trim();
+          const group = String(findVal(['group', 'বিভাগ']) || '').trim();
+          const fatherName = String(findVal(['father', 'পিতা', 'পিতার']) || '').trim();
+          const rawPhone = String(findVal(['guardian', 'mobile', 'phone', 'মোবাইল', 'ফোন', 'যোগাযোগ']) || '').trim();
+          const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+          const fatherPhone = String(findVal(['fatherphone', 'পিতার ফোন']) || '').trim();
+          const motherName = String(findVal(['mother', 'মাতা', 'মাতার']) || '').trim();
+          const presentAddress = String(findVal(['address', 'ঠিকানা']) || '').trim();
+          const monthlyFee = Number(findVal(['monthly', 'মাসিক']) || 0);
+          const admissionFee = Number(findVal(['admission', 'ভর্তি']) || 0);
+          const rollNumber = Number(findVal(['roll', 'রোল']) || idx + 1);
+
+          const errors: string[] = [];
+          if (!nameEn) errors.push('ইংরেজি নাম আবশ্যক');
+          if (!cleanPhone || cleanPhone.length < 11) errors.push('১১ ডিজিটের মোবাইল নম্বর আবশ্যক');
+
+          return {
+            rowNumber: idx + 1,
+            nameEn,
+            nameBn,
+            gender,
+            classLevel,
+            group,
+            fatherName: fatherName || (nameEn ? `${nameEn}'s Father` : ''),
+            guardianPhone: cleanPhone,
+            fatherPhone,
+            motherName,
+            presentAddress,
+            monthlyFee,
+            admissionFee,
+            rollNumber,
+            isValid: errors.length === 0,
+            errors,
+          };
+        });
+
+        setParsedRows(validated);
+      } catch (err: any) {
+        setFileError('এক্সেল ফাইল পার্স করতে ত্রুটি হয়েছে: ' + err.message);
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleConfirmImport = async () => {
+    const validStudents = parsedRows
+      .filter((r) => r.isValid)
+      .map((r) => ({
+        nameEn: r.nameEn,
+        nameBn: r.nameBn || undefined,
+        gender: r.gender,
+        classLevel: r.classLevel,
+        group: r.group || undefined,
+        fatherName: r.fatherName,
+        guardianPhone: r.guardianPhone,
+        fatherPhone: r.fatherPhone || undefined,
+        motherName: r.motherName || undefined,
+        presentAddress: r.presentAddress || undefined,
+        monthlyFee: r.monthlyFee,
+        admissionFee: r.admissionFee,
+        rollNumber: r.rollNumber,
+      }));
+
+    if (validStudents.length === 0) {
+      toast.error('ইম্পোর্ট করার মতো কোনো সঠিক শিক্ষার্থী রেকর্ড পাওয়া যায়নি');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const res = await api.post('/students/bulk-import', {
+        students: validStudents,
+        defaultBatchId: selectedBatchId || undefined,
+      });
+
+      toast.success(res.data?.message || 'শিক্ষার্থীদের সফলভাবে ডাটাবেজে ইম্পোর্ট করা হয়েছে');
+      setShowImportModal(false);
+      setParsedRows([]);
+      fetchStudents(1);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'ইম্পোর্ট করতে সমস্যা হয়েছে');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleExportExcel = () => {
     if (students.length === 0) {
       toast.error('এক্সপোর্ট করার মতো কোনো ডাটা নেই');
@@ -171,7 +362,7 @@ function StudentsListContent() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <Button
             variant="secondary"
             size="md"
@@ -179,7 +370,17 @@ function StudentsListContent() {
             className="flex items-center gap-1.5"
           >
             <FiDownload className="w-4 h-4 text-emerald-600" />
-            এক্সপোর্ট এক্সেল
+            এক্সেল এক্সপোর্ট
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 border-emerald-300 hover:bg-emerald-50 text-emerald-700"
+          >
+            <FiUploadCloud className="w-4 h-4 text-emerald-600" />
+            এক্সেল ইম্পোর্ট
           </Button>
 
           <Link href="/students/add">
@@ -405,6 +606,239 @@ function StudentsListContent() {
           )}
         </CardBody>
       </Card>
+
+      {/* Excel Import Modal */}
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => {
+          if (!isImporting) {
+            setShowImportModal(false);
+            setParsedRows([]);
+            setFileError(null);
+          }
+        }}
+        title="এক্সেল ফাইল থেকে বাল্ক শিক্ষার্থী ইম্পোর্ট"
+        description="কম্পিউটার থেকে এক্সেল (.xlsx, .xls) ফাইল আপলোড করে একাধিক শিক্ষার্থীর ডাটা একসাথে কোচিং সিস্টেমে যুক্ত করুন"
+        size="full"
+        footer={
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+            <div className="text-xs text-slate-500">
+              {parsedRows.length > 0 ? (
+                <span>
+                  সঠিক রেকর্ড:{' '}
+                  <strong className="text-emerald-700">
+                    {parsedRows.filter((r) => r.isValid).length}
+                  </strong>{' '}
+                  | ত্রুটি:{' '}
+                  <strong className="text-rose-700">
+                    {parsedRows.filter((r) => !r.isValid).length}
+                  </strong>
+                </span>
+              ) : (
+                'ফাইল আপলোড করে প্রিভিউ দেখুন'
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  setShowImportModal(false);
+                  setParsedRows([]);
+                  setFileError(null);
+                }}
+                disabled={isImporting}
+              >
+                বাতিল
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleConfirmImport}
+                disabled={
+                  isImporting ||
+                  parsedRows.length === 0 ||
+                  parsedRows.filter((r) => r.isValid).length === 0
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+              >
+                {isImporting ? (
+                  <>
+                    <Spinner size="sm" className="text-white" />
+                    ইম্পোর্ট হচ্ছে...
+                  </>
+                ) : (
+                  <>
+                    <FiCheckCircle className="w-4 h-4" />
+                    {parsedRows.filter((r) => r.isValid).length > 0
+                      ? `${parsedRows.filter((r) => r.isValid).length} জন শিক্ষার্থী ইম্পোর্ট করুন`
+                      : 'ইম্পোর্ট নিশ্চিত করুন'}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-5">
+          {/* Top Info & Template Download Box */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200">
+            <div>
+              <h4 className="text-sm font-bold text-emerald-950 flex items-center gap-1.5">
+                <FiFileText className="w-4 h-4 text-emerald-600" />
+                এক্সেল ফরম্যাট নির্দেশিকা
+              </h4>
+              <p className="text-xs text-emerald-800 mt-0.5">
+                ফাইলে অন্তত <strong>Name (English)</strong> ও <strong>Guardian Phone (১১ ডিজিট)</strong> হেডার থাকা আবশ্যক।
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadSampleTemplate}
+              className="bg-white hover:bg-emerald-100/50 border-emerald-300 text-emerald-800 font-bold shrink-0 shadow-xs"
+            >
+              <FiDownload className="w-3.5 h-3.5 mr-1 text-emerald-700" />
+              নমুনা এক্সেল ডাউনলোড (.xlsx)
+            </Button>
+          </div>
+
+          {/* Upload Drop Area & Batch Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                আপনার তৈরি করা এক্সেল ফাইল বেছে নিন (.xlsx, .xls, .csv)
+              </label>
+              <div className="relative border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-2xl p-6 text-center bg-slate-50/50 hover:bg-emerald-50/30 transition-all cursor-pointer">
+                <input
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleExcelFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <FiUploadCloud className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-800">
+                  ফাইল এখানে টেনে আনুন অথবা ক্লিক করে আপলোড করুন
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  সমর্থিত ফাইল ফরম্যাট: .xlsx, .xls, .csv (সর্বোচ্চ ৫ মেগাবাইট)
+                </p>
+              </div>
+              {fileError && (
+                <p className="text-xs text-rose-600 font-semibold mt-1.5 flex items-center gap-1">
+                  <FiAlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                  {fileError}
+                </p>
+              )}
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  ডিফল্ট ব্যাচ অ্যাসাইন (ঐচ্ছিক)
+                </label>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  ইম্পোর্টকৃত শিক্ষার্থীদের সরাসরি কোনো নির্দিষ্ট ব্যাচে যুক্ত করতে চাইলে নির্বাচন করুন:
+                </p>
+                <select
+                  value={selectedBatchId}
+                  onChange={(e) => setSelectedBatchId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs font-medium bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                >
+                  <option value="">কোনো ব্যাচ নয় (শুধুমাত্র ভর্তি)</option>
+                  {batches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.classLevel || 'সকল'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-slate-200/80 text-[11px] text-slate-500">
+                💡 প্রতিটি শিক্ষার্থীর জন্য সিস্টেম স্বয়ংক্রিয়ভাবে ইউনিক স্টুডেন্ট আইডি (যেমনঃ <span className="font-mono font-bold text-slate-700">USC-{new Date().getFullYear()}-XXXX</span>) তৈরি করে নেবে।
+              </div>
+            </div>
+          </div>
+
+          {/* Validation & Live Preview Table */}
+          {parsedRows.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">
+                  ফাইল প্রিভিউ ও ডাটা ভ্যালিডেশন ({parsedRows.length} টি রেকর্ড)
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Badge variant="success">
+                    {parsedRows.filter((r) => r.isValid).length} বৈধ
+                  </Badge>
+                  {parsedRows.filter((r) => !r.isValid).length > 0 && (
+                    <Badge variant="danger">
+                      {parsedRows.filter((r) => !r.isValid).length} ত্রুটিযুক্ত
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-2xl shadow-inner">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 text-slate-700 font-bold sticky top-0 z-10 border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 px-3">#</th>
+                      <th className="py-2 px-3">স্ট্যাটাস</th>
+                      <th className="py-2 px-3">নাম (ইংরেজি)</th>
+                      <th className="py-2 px-3">শ্রেণি</th>
+                      <th className="py-2 px-3">পিতার নাম</th>
+                      <th className="py-2 px-3">অভিভাবকের ফোন</th>
+                      <th className="py-2 px-3">মাসিক ফি</th>
+                      <th className="py-2 px-3">মন্তব্য / ত্রুটি</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {parsedRows.map((row) => (
+                      <tr
+                        key={row.rowNumber}
+                        className={row.isValid ? 'hover:bg-slate-50' : 'bg-rose-50/50 hover:bg-rose-50'}
+                      >
+                        <td className="py-2 px-3 text-slate-400 font-mono">{row.rowNumber}</td>
+                        <td className="py-2 px-3">
+                          {row.isValid ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                              <FiCheckCircle className="w-3 h-3" /> সঠিক
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full">
+                              <FiAlertTriangle className="w-3 h-3" /> ভুল
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-3 font-semibold text-slate-800">
+                          {row.nameEn || <span className="text-rose-500 italic">অনুপস্থিত</span>}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600">{row.classLevel}</td>
+                        <td className="py-2 px-3 text-slate-600">{row.fatherName || '-'}</td>
+                        <td className="py-2 px-3 font-mono font-medium text-slate-700">
+                          {row.guardianPhone || <span className="text-rose-500 italic">অনুপস্থিত</span>}
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 font-mono">৳{row.monthlyFee}</td>
+                        <td className="py-2 px-3">
+                          {row.isValid ? (
+                            <span className="text-emerald-600 text-[11px]">ইম্পোর্ট যোগ্য</span>
+                          ) : (
+                            <span className="text-rose-600 text-[11px] font-semibold">
+                              {row.errors.join(', ')}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

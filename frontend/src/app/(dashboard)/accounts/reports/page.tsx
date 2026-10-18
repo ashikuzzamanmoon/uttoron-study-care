@@ -18,6 +18,7 @@ import {
   FiDownload,
 } from 'react-icons/fi';
 import { Loader } from '@/components/ui/Loader';
+import * as XLSX from 'xlsx';
 
 export default function FinancialReportsPage() {
   const [activeTab, setActiveTab] = useState<'monthly' | 'yearly' | 'collection' | 'expense'>('monthly');
@@ -116,6 +117,84 @@ export default function FinancialReportsPage() {
     'ডিসেম্বর (December)',
   ];
 
+  const handleExportExcel = () => {
+    let sheetData: any[] = [];
+    let sheetName = 'Report';
+    let fileName = `Uttoron_Finance_${activeTab}_${Date.now()}.xlsx`;
+
+    if (activeTab === 'monthly') {
+      if (!monthlyData) {
+        toast.error('এক্সপোর্ট করার জন্য মাসিক ডাটা নেই');
+        return;
+      }
+      sheetName = 'Monthly Summary';
+      fileName = `Uttoron_Monthly_Finance_${targetMonth}_${targetYear}.xlsx`;
+      sheetData = [
+        { 'বিবরণ': 'মাস ও বছর', 'মান': `${monthNames[targetMonth - 1]}, ${targetYear}` },
+        { 'বিবরণ': 'মোট সংগৃহীত ফি (টাকা)', 'মান': monthlyData.totalIncome || 0 },
+        { 'বিবরণ': 'মোট ব্যয় (টাকা)', 'মান': monthlyData.totalExpense || 0 },
+        { 'বিবরণ': 'নিট উদ্বৃত্ত/মুনাফা (টাকা)', 'মান': monthlyData.netProfit || 0 },
+        { 'বিবরণ': 'মোট ফি ট্রানজ্যাকশন', 'মান': monthlyData.feeTransactionsCount || 0 },
+        { 'বিবরণ': 'মোট ব্যয় ভাউচার', 'মান': monthlyData.expenseVouchersCount || 0 },
+      ];
+    } else if (activeTab === 'yearly') {
+      if (!yearlyData?.monthlyBreakdown) {
+        toast.error('এক্সপোর্ট করার জন্য বার্ষিক ডাটা নেই');
+        return;
+      }
+      sheetName = 'Yearly Breakdown';
+      fileName = `Uttoron_Yearly_Finance_${targetYear}.xlsx`;
+      sheetData = yearlyData.monthlyBreakdown.map((m: any) => ({
+        'মাস': m.monthName || `Month ${m.month}`,
+        'মোট আয় (টাকা)': m.income || 0,
+        'মোট ব্যয় (টাকা)': m.expense || 0,
+        'নিট লাভ/লোকসান (টাকা)': (m.income || 0) - (m.expense || 0),
+      }));
+    } else if (activeTab === 'collection') {
+      const collections = collectionData?.recentCollections || collectionData?.collections || [];
+      if (collections.length === 0) {
+        toast.error('কালেকশন রিপোর্ট ডাটা খালি');
+        return;
+      }
+      sheetName = 'Fee Collections';
+      fileName = `Uttoron_Fee_Collections_${Date.now()}.xlsx`;
+      sheetData = collections.map((c: any, idx: number) => ({
+        'ক্রমিক': idx + 1,
+        'রসিদ নং': c.receiptNo || c.id,
+        'তারিখ': c.paymentDate ? new Date(c.paymentDate).toLocaleDateString('bn-BD') : '-',
+        'শিক্ষার্থী': c.student?.nameEn || c.student?.nameBn || '-',
+        'রোল': c.student?.studentId || '-',
+        'শ্রেণি/ব্যাচ': c.batch?.name || '-',
+        'ফি এর খাত': c.feeType || 'মাসিক টিউশন ফি',
+        'পরিমাণ (টাকা)': c.paidAmount || 0,
+        'পেমেন্ট মাধ্যম': c.paymentMethod || 'CASH',
+      }));
+    } else if (activeTab === 'expense') {
+      const expenses = expenseData?.recentExpenses || expenseData?.expenses || [];
+      if (expenses.length === 0) {
+        toast.error('ব্যয় রিপোর্ট ডাটা খালি');
+        return;
+      }
+      sheetName = 'Expenses';
+      fileName = `Uttoron_Expense_Report_${Date.now()}.xlsx`;
+      sheetData = expenses.map((e: any, idx: number) => ({
+        'ক্রমিক': idx + 1,
+        'ভাউচার নং': e.voucherNo || e.id,
+        'তারিখ': e.date ? new Date(e.date).toLocaleDateString('bn-BD') : '-',
+        'ব্যয়ের খাত/ক্যাটাগরি': e.category?.name || e.category || '-',
+        'বিবরণ': e.description || '-',
+        'পরিমাণ (টাকা)': e.amount || 0,
+        'গ্রহীতা': e.recipient || '-',
+      }));
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(sheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    XLSX.writeFile(workbook, fileName);
+    toast.success('আর্থিক রিপোর্ট সফলভাবে এক্সেল ফাইল হিসেবে ডাউনলোড হয়েছে');
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -141,6 +220,15 @@ export default function FinancialReportsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-sm rounded-xl shadow-xs transition-all"
+          >
+            <FiDownload className="w-4 h-4" />
+            এক্সেল এক্সপোর্ট
+          </button>
+
           <button
             type="button"
             onClick={() => window.print()}

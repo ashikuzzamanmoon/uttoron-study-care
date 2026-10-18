@@ -18,9 +18,11 @@ import {
   FiRefreshCw,
   FiX,
   FiCheck,
+  FiDownload,
 } from 'react-icons/fi';
 import { Badge } from '@/components/ui/Badge';
 import { Loader } from '@/components/ui/Loader';
+import * as XLSX from 'xlsx';
 
 interface CampaignItem {
   id: string;
@@ -114,6 +116,19 @@ export default function SmsCampaignPage() {
     } finally {
       setUploadingFile(false);
     }
+  };
+
+  const handleDownloadSampleTemplate = () => {
+    const sampleRows = [
+      { 'Name': 'Tanvir Ahmed', 'Phone': '01812345678', 'Category': 'SSC 2026 Batch' },
+      { 'Name': 'Sadia Sultana', 'Phone': '01712345679', 'Category': 'HSC 2026 Batch' },
+      { 'Name': 'Rahim Uddin', 'Phone': '01912345680', 'Category': 'Class 10 Batch' },
+    ];
+    const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Recipients');
+    XLSX.writeFile(workbook, 'Uttoron_SMS_Recipients_Template.xlsx');
+    toast.success('এসএমএস প্রাপকদের নমুনা এক্সেল টেমপ্লেট ডাউনলোড হয়েছে');
   };
 
   // Create Campaign Submit
@@ -376,9 +391,19 @@ export default function SmsCampaignPage() {
 
               {/* Excel Upload Area */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  প্রাপকদের এক্সেল ফাইল আপলোড করুন (.xlsx, .csv) <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700">
+                    প্রাপকদের এক্সেল ফাইল আপলোড করুন (.xlsx, .csv) <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleDownloadSampleTemplate}
+                    className="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <FiDownload className="w-3 h-3" />
+                    নমুনা এক্সেল ডাউনলোড
+                  </button>
+                </div>
                 <div
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-slate-200 hover:border-amber-400 hover:bg-amber-50/40 p-5 rounded-2xl text-center cursor-pointer transition-all"

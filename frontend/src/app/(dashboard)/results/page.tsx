@@ -21,7 +21,9 @@ import {
   FiAlertCircle,
   FiUser,
   FiEye,
+  FiDownload,
 } from 'react-icons/fi';
+import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { toBengaliNumber, formatDate } from '../../../lib/utils';
 
@@ -161,6 +163,38 @@ function ResultSheetContent() {
   const stats = resultData?.stats;
   const meritList = resultData?.meritList || [];
 
+  const handleExportExcel = () => {
+    if (!resultData || meritList.length === 0) {
+      toast.error('এক্সপোর্ট করার মতো কোনো ফলাফল ডাটা নেই');
+      return;
+    }
+
+    const exportRows = meritList.map((item: any, idx: number) => ({
+      'মেরিট র‍্যাংক': item.rank ?? idx + 1,
+      'স্টুডেন্ট আইডি': item.student?.studentId || '-',
+      'নাম (বাংলা)': item.student?.nameBn || '-',
+      'নাম (ইংরেজি)': item.student?.nameEn || '-',
+      'রোল নম্বর': item.rollNumber || '-',
+      'শ্রেণি': exam?.batch?.classLevel || '-',
+      'পরীক্ষার নাম': exam?.name || '-',
+      'বিষয়': exam?.subject?.name || '-',
+      'পূর্ণমান': exam?.totalMarks || 100,
+      'প্রাপ্ত নম্বর': item.obtainedMarks ?? 0,
+      'শতকরা (%)': `${item.percentage ?? 0}%`,
+      'লেটার গ্রেড': item.grade || '-',
+      'গ্রেড পয়েন্ট (GPA)': item.gpa ?? 0,
+      'ফলাফল': (item.gpa ?? 0) > 0 ? 'উত্তীর্ণ (Pass)' : 'অনুত্তীর্ণ (Fail)',
+      'মন্তব্য': item.remarks || '-',
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Merit List');
+    const examTitle = (exam?.name || 'Exam').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(workbook, `Uttoron_Merit_List_${examTitle}_${Date.now()}.xlsx`);
+    toast.success('রেজাল্ট শিট সফলভাবে এক্সেল ফাইল হিসেবে ডাউনলোড হয়েছে');
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Header & Actions */}
@@ -178,6 +212,16 @@ function ResultSheetContent() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handleExportExcel}
+            disabled={!resultData || meritList.length === 0}
+            leftIcon={<FiDownload className="text-emerald-600" />}
+          >
+            এক্সেল এক্সপোর্ট
+          </Button>
+
           <Button
             variant="secondary"
             size="md"
