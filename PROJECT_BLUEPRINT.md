@@ -1913,7 +1913,7 @@ backend/src/modules/attendance/ তৈরি করো:
 ### PHASE 5: SMS ENGINE
 ### ============================================
 
-#### ⬜ STEP 25: SMS Module (Backend)
+#### ✅ STEP 25: SMS Module (Backend)
 ```
 এসএমএস ইঞ্জিন (ব্যাকএন্ড):
 
