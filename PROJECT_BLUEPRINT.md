@@ -1994,7 +1994,7 @@ backend/src/modules/attendance/ তৈরি করো:
 ### PHASE 6: DASHBOARD, REPORTS & SETTINGS
 ### ============================================
 
-#### ⬜ STEP 27: Dashboard (Backend + Frontend)
+#### ✅ STEP 27: Dashboard (Backend + Frontend)
 ```
 ড্যাশবোর্ড:
 
@@ -2151,12 +2151,12 @@ Frontend — /settings:
 
 | Phase | Steps | Status |
 | :--- | :--- | :---: |
-| **Phase 1: Setup** | Steps 1-10 | ⬜ |
-| **Phase 2: Core Modules** | Steps 11-18 | ⬜ |
-| **Phase 3: Attendance & Exam** | Steps 19-22 | ⬜ |
-| **Phase 4: Accounts** | Steps 23-24 | ⬜ |
-| **Phase 5: SMS Engine** | Steps 25-26 | ⬜ |
-| **Phase 6: Dashboard & Reports** | Steps 27-30 | ⬜ |
+| **Phase 1: Setup** | Steps 1-10 | ✅ |
+| **Phase 2: Core Modules** | Steps 11-18 | ✅ |
+| **Phase 3: Attendance & Exam** | Steps 19-22 | ✅ |
+| **Phase 4: Accounts** | Steps 23-24 | ✅ |
+| **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
+| **Phase 6: Dashboard & Reports** | Steps 27-30 | 🔄 (Step 27 Done) |
 | **Phase 7: Polish** | Steps 31-35 | ⬜ |
 
 ---
