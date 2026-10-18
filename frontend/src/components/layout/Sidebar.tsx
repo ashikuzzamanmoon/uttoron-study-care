@@ -21,6 +21,7 @@ import {
   FiChevronDown,
   FiChevronRight,
   FiBookOpen,
+  FiPrinter,
 } from 'react-icons/fi';
 
 interface SidebarProps {
@@ -139,6 +140,12 @@ export function Sidebar({
       icon: <FiBarChart2 className="w-5 h-5 shrink-0" />,
       href: '/dashboard/reports',
       roles: ['SUPER_ADMIN', 'ADMIN'],
+    },
+    {
+      title: 'প্রিন্ট ও ডকুমেন্টস',
+      icon: <FiPrinter className="w-5 h-5 shrink-0" />,
+      href: '/dashboard/print',
+      roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF'],
     },
     {
       title: 'সিস্টেম সেটিংস',

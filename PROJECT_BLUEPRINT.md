@@ -2095,7 +2095,7 @@ Frontend — /settings:
 5. Clear all filters button
 ```
 
-#### ⬜ STEP 32: Print & PDF
+#### ✅ STEP 32: Print & PDF
 ```
 প্রিন্ট ও পিডিএফ ফিচার:
 
@@ -2157,7 +2157,7 @@ Frontend — /settings:
 | **Phase 4: Accounts** | Steps 23-24 | ✅ |
 | **Phase 5: SMS Engine** | Steps 25-26 | ✅ |
 | **Phase 6: Dashboard & Reports** | Steps 27-30 | ✅ |
-| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31 Done) |
+| **Phase 7: Polish** | Steps 31-35 | 🔄 (Step 31, 32 Done) |
 
 ---
 

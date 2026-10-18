@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
       { source: '/dashboard/reports', destination: '/reports' },
       { source: '/dashboard/settings/:path*', destination: '/settings/:path*' },
       { source: '/dashboard/settings', destination: '/settings' },
+      { source: '/dashboard/print/:path*', destination: '/print/:path*' },
+      { source: '/dashboard/print', destination: '/print' },
     ];
   },
 };
