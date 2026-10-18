@@ -38,3 +38,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
     />
   );
 }
+
+export const Loader = Spinner;
+export default Spinner;
+

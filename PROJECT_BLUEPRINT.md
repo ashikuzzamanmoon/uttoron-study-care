@@ -1875,7 +1875,7 @@ backend/src/modules/attendance/ তৈরি করো:
    - accounts.controller.ts
 ```
 
-#### ⬜ STEP 24: Accounts Module (Frontend)
+#### ✅ STEP 24: Accounts Module (Frontend)
 ```
 হিসাব-নিকাশ ফ্রন্টএন্ড:
 
