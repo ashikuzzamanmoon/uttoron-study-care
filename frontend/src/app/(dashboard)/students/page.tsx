@@ -115,59 +115,7 @@ function StudentsListContent() {
         }
 
       } catch (err: any) {
-        // Offline demo fallback
-        const demoStudents: any[] = [
-          {
-            id: '1',
-            studentId: 'USC-2026-0001',
-            nameEn: 'Tanvir Ahmed',
-            nameBn: 'তানভীর আহমেদ',
-            classLevel: 'Class 10',
-            group: 'Science',
-            guardianPhone: '01812345678',
-            guardianName: 'Md. Rafiqul Islam',
-            bloodGroup: 'B+',
-            isActive: true,
-          },
-          {
-            id: '2',
-            studentId: 'USC-2026-0002',
-            nameEn: 'Sadia Sultana',
-            nameBn: 'সাদিয়া সুলতানা',
-            classLevel: 'Class 10',
-            group: 'Science',
-            guardianPhone: '01712345679',
-            guardianName: 'Anwar Hossain',
-            bloodGroup: 'O+',
-            isActive: true,
-          },
-          {
-            id: '3',
-            studentId: 'USC-2026-0003',
-            nameEn: 'Rahim Uddin',
-            nameBn: 'রহিম উদ্দিন',
-            classLevel: 'Class 9',
-            group: 'Commerce',
-            guardianPhone: '01912345680',
-            guardianName: 'Shamsul Alam',
-            bloodGroup: 'A+',
-            isActive: true,
-          },
-          {
-            id: '4',
-            studentId: 'USC-2026-0004',
-            nameEn: 'Farhana Yeasmin',
-            nameBn: 'ফারহানা ইয়াসমিন',
-            classLevel: 'Class 8',
-            group: 'General',
-            guardianPhone: '01612345681',
-            guardianName: 'Abdul Malek',
-            bloodGroup: 'AB+',
-            isActive: true,
-          },
-        ];
-        setStudents(demoStudents);
-        setMeta({ page: 1, limit: 10, total: 4, totalPages: 1 });
+        toast.error('শিক্ষার্থীদের তথ্য লোড করতে সমস্যা হয়েছে');
       } finally {
         setIsLoading(false);
       }
