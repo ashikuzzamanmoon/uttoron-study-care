@@ -17,6 +17,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
+  const applyTheme = (targetTheme: Theme) => {
+    const root = document.documentElement;
+    if (targetTheme === 'dark') {
+      root.classList.add('dark');
+      root.setAttribute('data-theme', 'dark');
+      root.style.colorScheme = 'dark';
+    } else {
+      root.classList.remove('dark');
+      root.setAttribute('data-theme', 'light');
+      root.style.colorScheme = 'light';
+    }
+  };
+
   useEffect(() => {
     try {
       const savedTheme = localStorage.getItem('uttoron_theme') as Theme | null;
@@ -36,19 +49,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setMounted(true);
     }
   }, []);
-
-  const applyTheme = (targetTheme: Theme) => {
-    const root = document.documentElement;
-    if (targetTheme === 'dark') {
-      root.classList.add('dark');
-      root.setAttribute('data-theme', 'dark');
-      root.style.colorScheme = 'dark';
-    } else {
-      root.classList.remove('dark');
-      root.setAttribute('data-theme', 'light');
-      root.style.colorScheme = 'light';
-    }
-  };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
